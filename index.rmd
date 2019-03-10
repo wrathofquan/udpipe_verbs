@@ -1,0 +1,95 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+wvs5=readRDS("F00007944-WV5_Data_R_v20180912.rds")
+
+```
+```{r}
+bii$cs=NA
+       bii$cs[bii$V255==1] = 1
+       bii$cs[bii$V255==2] = 1
+       bii$cs[bii$V255==3] = 1
+       bii$cs[bii$V255==4] = 2
+       bii$cs[bii$V255==5] = 2
+       bii$cs[bii$V255==6] = 3
+       bii$cs[bii$V255==7] = 4
+       bii$cs[bii$V255==8] = 5
+
+      bii$country=NA
+       bii$country[bii$V2==76] = 1
+       bii$country[bii$V2==356] = 2
+       bii$country[bii$V2==360] = 3
+```
+
+```{r}
+#Clean and prepare data
+    bii_temp <- subset(wvs5, V2==76 | V2==356 | V2==360)   #Keep only Brazil, India, Indonesia from Wave 5 data
+    bii <- subset(bii_temp, V255!=-5 & V255!=-2)   #Drop unidentified observations for city size
+
+                              
+   
+  
+#Clean tolerance variables
+  #Change classes of labelled variables
+    bii$V16 = as.numeric(bii$V16)
+    bii$V23 = as.numeric(bii$V23)
+ #Recode 
+    bii$V16[bii$V16==2] <- 0 #recode "not mentioned"" from 2 to 0
+    #describe(bii_clean$V16)
+    
+    bii$V23[bii$V23==2] <- 0 #recode "need to be very careful" from 2 to 0
+    bii$V23[bii$V23==-5] <- NA #recode to NA, note that it's a lot, check countries
+    bii$V23[bii$V23==-2] <- NA #recode to NA, note that it's a lot
+    bii$V23[bii$V23==-1] <- NA #recode to NA, note that it's a lot
+    
+    bii$V35[bii$V35==-5] <- NA
+    bii$V35[bii$V35==2] <- 0 #recode "not mentioned"" from 2 to 0
+    
+    bii$V39[bii$V39==-5] <- NA
+    bii$V39[bii$V39==2] <- 0 #recode "not mentioned"" from 2 to 0
+    
+
+```
+```{r}
+bii %>% group_by(cs) %>% summarize(mean_V16 = mean(V16), 
+                                   sd_V16 = sd(V16),
+                                   N = n(),
+                                   se = sd_V16/sqrt(N),
+                                   upper_limit = mean_V16+se,
+                                   lower_limit = mean_V16-se) %>% 
+  ggplot(aes(x=cs, y= mean_V16, label= paste0("n = ",N))) + geom_text(nudge_x = .3) +
+  geom_point() + geom_line() + 
+  geom_errorbar(aes(ymin=lower_limit , ymax= upper_limit, width = 0.1))+ theme_minimal() +       ggtitle("Important child qualities: tolerance and respect for other people")
+
+```
+
+```{r}
+bii %>% group_by(cs) %>% summarize(mean_V16 = mean(V16), 
+                                   sd_V16 = sd(V16),
+                                   N = n(),
+                                   se = sd_V16/sqrt(N),
+                                   upper_limit = mean_V16+se,
+                                   lower_limit = mean_V16-se) %>% 
+  ggplot(aes(x=cs, y= mean_V16, label= paste0("n = ",N))) + geom_text(nudge_y = .05) +
+  geom_bar(stat = "identity", alpha=0.5) + 
+  geom_errorbar(aes(ymin=lower_limit , ymax= upper_limit, width = 0.1))+ theme_minimal() +       
+  ggtitle("Important child qualities: tolerance and respect for other people")
+
+```
+```{r}
+bii$country <- factor(bii$country)
+levels(bii$country) <- c("Brazil", "India", "Indonesia")
+ggplot(bii, aes(x= cs,  y = V16, colour = country)) + 
+  geom_point(stat="summary", fun.y="mean") + 
+  geom_errorbar(stat="summary", fun.data="mean_se", fun.args = list(mult = 1.96), width=0) +
+  labs(x="cs", y="V16") +
+  theme_bw()
+```
+
