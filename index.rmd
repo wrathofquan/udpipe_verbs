@@ -9,24 +9,14 @@ library(tidyverse)
 
 ```{r}
 wvs5=readRDS("F00007944-WV5_Data_R_v20180912.rds")
+bii_temp <- subset(wvs5, V2==76 | V2==356 | V2==360)   #Keep only Brazil, India, Indonesia from Wave 5 data
+bii <- subset(bii_temp, V255!=-5 & V255!=-2)   #Drop unidentified observations for city size
+   
 
 ```
-```{r}
-bii$cs=NA
-       bii$cs[bii$V255==1] = 1
-       bii$cs[bii$V255==2] = 1
-       bii$cs[bii$V255==3] = 1
-       bii$cs[bii$V255==4] = 2
-       bii$cs[bii$V255==5] = 2
-       bii$cs[bii$V255==6] = 3
-       bii$cs[bii$V255==7] = 4
-       bii$cs[bii$V255==8] = 5
 
-      bii$country=NA
-       bii$country[bii$V2==76] = 1
-       bii$country[bii$V2==356] = 2
-       bii$country[bii$V2==360] = 3
-```
+
+
 
 ```{r}
 #Clean and prepare data
@@ -57,6 +47,25 @@ bii$cs=NA
     
 
 ```
+
+
+```{r}
+bii$cs=NA
+       bii$cs[bii$V255==1] = 1
+       bii$cs[bii$V255==2] = 1
+       bii$cs[bii$V255==3] = 1
+       bii$cs[bii$V255==4] = 2
+       bii$cs[bii$V255==5] = 2
+       bii$cs[bii$V255==6] = 3
+       bii$cs[bii$V255==7] = 4
+       bii$cs[bii$V255==8] = 5
+
+      bii$country=NA
+       bii$country[bii$V2==76] = 1
+       bii$country[bii$V2==356] = 2
+       bii$country[bii$V2==360] = 3
+```
+
 ```{r}
 bii %>% group_by(cs) %>% summarize(mean_V16 = mean(V16), 
                                    sd_V16 = sd(V16),
