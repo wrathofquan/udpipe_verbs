@@ -1,0 +1,292 @@
+---
+title: "City Size DV plots - Cities Project"
+author: "Surili Sheth"
+date: "February 18, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80), tidy=TRUE)
+rm(list=ls())
+
+#setwd("C:/Users/Surili/Dropbox (Personal)/Berkeley/Research/GSR/Alison Post/Cities project/Data/Public Opinion/WVS2/Wave 5")
+```
+
+### Setup library
+* * *
+
+```{r, results="hide", message=FALSE}
+library(pacman)
+p_load(dplyr, knitr, kableExtra, ggplot2, ggrepel, tidyverse, haven, Hmisc, gplots, expss, naniar, Rmisc)
+```
+
+###Load data
+
+```{r}
+    # Read data
+    wvs5=readRDS("F00007944-WV5_Data_R_v20180912.rds")
+
+```
+
+###Cleaning - subsetting, relabeling, and recoding
+
+```{r}
+#Clean and prepare data
+    bii_temp <- subset(wvs5, V2==76 | V2==356 | V2==360)   #Keep only Brazil, India, Indonesia from Wave 5 data
+    bii <- subset(bii_temp, V255!=-5 & V255!=-2)   #Drop unidentified observations for city size
+   
+ #Label main variables - city size bands and countries
+        library(expss)
+        
+    #Label variables
+        bii = apply_labels(bii,
+                              V2 = "Country",
+                              V255 = "City Size")
+                              
+    #Label values
+        var_lab(bii$V2) = "Country"
+        var_lab(bii$V255) = "City Size"
+    
+        val_lab(bii$V2) = num_lab("
+                    76 Brazil
+                    356 India    
+                    360 Indonesia    
+        ")
+         
+       # val_lab(bii$V255) = num_lab("
+       #              1 <2k
+       #              2 2k-5k    
+       #              3 5k-10k
+       #              4 10k-20k
+       #              5 20k-50k
+       #              6 50k-100k
+       #              7 100k-500k
+       #              8 >500k
+       #  ")
+    
+      #val_lab(bii$V255)
+      #val_lab(bii$V2)
+       
+      #Create new size bins - recode
+       bii$cs=NA
+       bii$cs[bii$V255==1] = 1
+       bii$cs[bii$V255==2] = 1
+       bii$cs[bii$V255==3] = 1
+       bii$cs[bii$V255==4] = 2
+       bii$cs[bii$V255==5] = 2
+       bii$cs[bii$V255==6] = 3
+       bii$cs[bii$V255==7] = 4
+       bii$cs[bii$V255==8] = 5
+       
+       #recode countries
+      bii$country=NA
+       bii$country[bii$V2==76] = 1
+       bii$country[bii$V2==356] = 2
+       bii$country[bii$V2==360] = 3
+      
+       #describe(bii$cs)
+         
+       val_lab(bii$cs) = num_lab("
+                    1 <2-10k
+                    2 10-50k    
+                    3 50-100k
+                    4 100-500k
+                    5 >500k
+        ")
+       
+       val_lab(bii$country) = num_lab("
+                    1 Brazil
+                    2 India
+                    3 Indonesia
+                                      ")
+       
+       #val_lab(bii$cs)
+  
+#Clean tolerance variables
+  #Change classes of labelled variables
+    bii$V16 = as.numeric(bii$V16)
+    bii$V23 = as.numeric(bii$V23)
+ #Recode 
+    bii$V16[bii$V16==2] <- 0 #recode "not mentioned"" from 2 to 0
+    #describe(bii_clean$V16)
+    
+    bii$V23[bii$V23==2] <- 0 #recode "need to be very careful" from 2 to 0
+    bii$V23[bii$V23==-5] <- NA #recode to NA, note that it's a lot, check countries
+    bii$V23[bii$V23==-2] <- NA #recode to NA, note that it's a lot
+    bii$V23[bii$V23==-1] <- NA #recode to NA, note that it's a lot
+    
+    bii$V35[bii$V35==-5] <- NA
+    bii$V35[bii$V35==2] <- 0 #recode "not mentioned"" from 2 to 0
+    
+    bii$V39[bii$V39==-5] <- NA
+    bii$V39[bii$V39==2] <- 0 #recode "not mentioned"" from 2 to 0
+    
+
+
+```
+
+
+#DV 1 - Tolerance and trust
+
+#V16 - line plot & bar plot, by city size
+
+```{r}
+#V16 - all countries
+    library(gplots)
+    plotmeans(V16 ~ cs, data = bii, mean.labels = TRUE, connect = TRUE, digits = 2 , col = "red", barwidth = 2 , main = "Important child qualities: tolerance and respect for other people" , xlab = "City size bin (pop)", ylab = "0 = not mentioned, 1 = mentioned" )
+    
+##JQ
+library(tidyverse)
+    
+bii %>% group_by(cs) %>% summarize(mean_V16 = mean(V16), 
+                                   sd_V16 = sd(V16),
+                                   N = n(),
+                                   se = sd_V16/sqrt(N),
+                                   upper_limit = mean_V16+se,
+                                   lower_limit = mean_V16-se) %>% 
+  ggplot(aes(x=cs, y= mean_V16, label= paste0("n = ",N))) + geom_text(nudge_x = .3) +
+  geom_point() + geom_line() + 
+  geom_errorbar(aes(ymin=lower_limit , ymax= upper_limit, width = 0.1))+ theme_minimal() +       ggtitle("Important child qualities: tolerance and respect for other people")
+
+
+
+ggplot(bii, aes(x=cs, y= V16)) + geom_point(stat="summary", fun.y="mean") + geom_line(stat="summary", fun.y="mean") +
+  geom_errorbar(stat="summary", fun.data="mean_se", width = .1) + 
+  theme_minimal() + ggtitle("Important child qualities: tolerance and respect for other people") 
+
+
+
+
+```
+Tolerance and respect for other people more mentioned as a value to teach children in mid-size cities (20k-100k) than in smaller or larger sized cities. Inverse-U relationship.
+
+#V16 - bar plot, by city size and country
+
+```{r}
+#V16 - by country 
+  library(Rmisc)
+  summ_v16 = summarySE(bii, measurevar = "V16", groupvars= c("country", "cs"))
+
+# Default bar plot
+p_v16<- ggplot(summ_v16, aes(x=cs, y=V16, fill=country)) + 
+  
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) +
+  
+  geom_errorbar(aes(ymin=V16-ci, ymax=V16+ci), width=.2,
+                 position=position_dodge(.9))
+
+
+# Finished bar plot
+p_v16 = p_v16 +labs(title="Important child qualities: tolerance and respect for other people", x="City size bin (pop)", y = "0 = not mentioned, 1 = mentioned")+
+   theme_classic()
+#+ scale_fill_manual(values=c('#999999','#E69F00'))
+
+print(p_v16)
+
+## JQ -Bar Chart with Error Bars
+
+
+ggplot(bii, aes(x=cs, y=V16, fill = country)) + geom_bar(stat="summary", fun.y="mean") + 
+  geom_errorbar(stat="summary", fun.data="mean_se") + theme_minimal()
+
+
+
+
+```
+
+```{r}
+#V16 - by country 
+  library(Rmisc)
+  summ_v16 = summarySE(bii, measurevar = "V16", groupvars= c("country", "cs"))
+  summ_v16_2 = summ_v16
+  summ_v16_2$cs = factor(summ_v16_2$cs)
+  
+  ggplot(summ_v16_2, aes(x=cs, y=V16, fill=country)) +
+    geom_bar(position=position_dodge(), stat = "identity",
+             size=.3) +
+    geom_errorbar(aes(ymin=V16-se, ymax=V16+se),
+                  size=.3,
+                  width=.2,
+                  position=position_dodge(.9)) +
+    xlab("City size bin (population)") +
+    ylab("0 = not mentioned, 1 = mentioned") +
+   # scale_fill_hue(name="Country", # Legend label, use darker colors
+                  # breaks=waiver(),
+                   #labels=waiver()
+                 # ) +
+    ggtitle("Important child qualities: tolerance and respect for other people") +
+    scale_y_discrete() +
+    theme_bw()
+
+```
+
+```{r}
+
+summ_v16 = summarySE(bii, measurevar = "V16", groupvars= c("country", "cs"))
+pd <- position_dodge(0.1)
+#summ_V16$cs = summ_V16
+
+# Use 95% confidence interval instead of SEM
+ggplot(summ_v16, aes(x=cs, y=V16, colour=country)) + 
+    geom_errorbar(aes(ymin=V16-ci, ymax=V16+ci), width=.1, position=pd) +
+    geom_line(position=pd) +
+    geom_point(position=pd)
+
+```
+
+#Trust (V23)
+
+```{r}
+#Plot
+    library(gplots)
+    plotmeans(V23 ~ V255, data = bii, mean.labels = TRUE, connect = FALSE)
+
+```
+
+Individuals are more trusting of "most people" cities of size 50k-100k. Individuals are less trusting in mid-sized cities than in small, and than in large cities. (See if country break-downs can shed some more light on the pattern) 
+
+#Neighbors: race (V35)
+
+```{r}
+#Plot
+    library(gplots)
+    plotmeans(V35 ~ V255, data = bii, mean.labels = TRUE, connect = FALSE)
+
+```
+
+People are a lot more okay with neighbors of a diferent race starting in 10k-20k city size band and larger city size bands. There is a clear pattern of gradual increase in tolerance (decrease in intolerance toward those of a different race) as city size increases; however, tolerance for other races seems to start decreasing again for >500k. 
+
+#Neighbors: religion (V39)
+
+```{r}
+#Plot
+    library(gplots)
+    plotmeans(V39 ~ V255, data = bii, mean.labels = TRUE, connect = FALSE)
+
+```
+Very similar pattern for religion as for race. People are a lot more okay with neighbors of a diferent religion starting in 10k-20k city size band and larger city size bands. There is a clear pattern of gradual increase in tolerance (decrease in intolerance toward those of a different religion) as city size increases; however, tolerance for people of other religions seems to start decreasing again for >500k. 
+
+
+```{r}
+# #Clean variables
+# 
+#     tolerance$V39[tolerance$V39==-5] <- NA
+#     tolerance$V39[tolerance$V39==2] <- 0 #recode "not mentioned"" from 2 to 0
+# 
+# #Sum all neighbor variables
+#   
+#     sum_neighbors = with(tolerance, a+b+c+d)
+# 
+# #Jitter plot
+#     library(ggplot2)
+#     qplot(mpg, wt, data=df, colour= factor(cyl))
+
+```
+
+
+
+
+
+
